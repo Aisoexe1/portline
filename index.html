@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ПортЛайн — портовые выгрузки и доставка грузов</title>
+<meta name="description" content="Полный цикл перевалки грузов: выгрузка судов, хранение на терминале и доставка по России. Работаем круглосуточно.">
+<meta name="theme-color" content="#0a1119">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a1119'/%3E%3Crect x='8' y='14' width='16' height='10' fill='%23ffab1f'/%3E%3Crect x='15' y='4' width='2' height='10' fill='%23ffab1f'/%3E%3C/svg%3E">
+<!-- Демонстрационный проект: компания, цифры и контакты вымышлены -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============ ТОКЕНЫ ============ */
+  :root{
+    --bg:#0a1119;
+    --surface:#0e1922;
+    --surface-2:#121f2b;
+    --line:rgba(148,190,225,.12);
+    --text:#e9f1f7;
+    --muted:#8ba1b4;
+    --accent:#ffab1f;
+    --accent-ink:#171004;
+    --accent-soft:rgba(255,171,31,.12);
+    --r:0px; /* единый размер углов: всё остро */
+    color-scheme:dark;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Golos Text",system-ui,-apple-system,sans-serif;
+    font-size:16.5px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--accent);color:var(--accent-ink)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  ::-webkit-scrollbar{width:10px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:#1b2c3a;border:2px solid var(--bg)}
+  a{color:inherit;text-decoration:none}
+  section{scroll-margin-top:84px}
+
+  /* зерно поверх всего — очень деликатно */
+  body::after{
+    content:"";position:fixed;inset:0;z-index:60;pointer-events:none;opacity:.05;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  }
+
+  .wrap{max-width:1240px;margin:0 auto;padding:0 28px}
+  .mono{font-family:"JetBrains Mono",monospace}
+  h1,h2,h3,.brand{font-family:"Unbounded",system-ui,sans-serif;font-weight:600}
+  h1{font-size:clamp(2.15rem,4.6vw,4.1rem);line-height:1.06;letter-spacing:-.01em}
+  h2{font-size:clamp(1.5rem,2.6vw,2.3rem);line-height:1.18}
+  .lead{color:var(--muted);max-width:62ch}
+
+  .tick{display:inline-flex;align-items:center;gap:10px;font-family:"JetBrains Mono",monospace;
+    font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+  .tick::before{content:"";width:18px;height:2px;background:var(--accent)}
+
+  /* ============ КНОПКИ ============ */
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;white-space:nowrap;
+    background:var(--accent);color:var(--accent-ink);
+    font-weight:600;font-size:15px;letter-spacing:.01em;
+    padding:15px 26px;border:1px solid var(--accent);cursor:pointer;
+    transition:transform .25s cubic-bezier(.16,1,.3,1),background .25s,box-shadow .25s;
+  }
+  .btn:hover{background:#ffc056;transform:translateY(-2px);box-shadow:0 10px 30px -12px rgba(255,171,31,.45)}
+  .btn:active{transform:translateY(0) scale(.985)}
+  .btn-ghost{
+    display:inline-flex;align-items:center;gap:10px;white-space:nowrap;
+    color:var(--text);background:transparent;border:1px solid var(--line);
+    font-weight:500;font-size:15px;padding:15px 24px;cursor:pointer;
+    transition:border-color .25s,transform .25s;
+  }
+  .btn-ghost:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .btn-ghost:active{transform:scale(.985)}
+  .btn .arr,.btn-ghost .arr{font-family:"JetBrains Mono",monospace;transition:transform .25s}
+  .btn:hover .arr{transform:translateY(2px)}
+  .btn-ghost:hover .arr{transform:translateX(3px)}
+
+  /* ============ НАВИГАЦИЯ ============ */
+  header{
+    position:fixed;top:0;left:0;right:0;z-index:50;height:72px;
+    background:rgba(10,17,25,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{height:72px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+  .brand{display:flex;align-items:center;gap:12px;font-size:15px;font-weight:700;letter-spacing:.04em}
+  .brand svg{display:block}
+  .nav-links{display:flex;gap:30px;align-items:center;font-size:14px;color:var(--muted)}
+  .nav-links a{position:relative;transition:color .2s;padding:6px 0}
+  .nav-links a::after{content:"";position:absolute;left:0;bottom:0;width:0;height:1px;background:var(--accent);transition:width .25s}
+  .nav-links a:hover{color:var(--text)}
+  .nav-links a:hover::after{width:100%}
+  .nav .btn{padding:11px 20px;font-size:14px}
+  .burger{display:none;background:none;border:1px solid var(--line);width:42px;height:42px;cursor:pointer;position:relative}
+  .burger span{position:absolute;left:11px;right:11px;height:2px;background:var(--text);transition:transform .3s,top .3s}
+  .burger span:nth-child(1){top:16px}
+  .burger span:nth-child(2){top:24px}
+  .burger.open span:nth-child(1){top:20px;transform:rotate(45deg)}
+  .burger.open span:nth-child(2){top:20px;transform:rotate(-45deg)}
+  .m-panel{display:none;position:fixed;top:72px;left:0;right:0;z-index:49;
+    background:rgba(10,17,25,.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:20px 28px 28px}
+  .m-panel.open{display:block}
+  .m-panel a{display:block;padding:13px 0;border-bottom:1px solid var(--line);color:var(--muted);font-size:16px}
+  .m-panel a:last-child{border:none}
+  .m-panel .btn{width:100%;justify-content:center;margin-top:16px}
+
+  /* ============ HERO ============ */
+  .hero{position:relative;min-height:100dvh;display:flex;align-items:flex-end;overflow:hidden}
+  .hero::before{ /* шторка для читаемости текста */
+    content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+    background:linear-gradient(93deg,rgba(10,17,25,.92) 0%,rgba(10,17,25,.78) 34%,rgba(10,17,25,.25) 58%,rgba(10,17,25,0) 78%),
+               linear-gradient(180deg,rgba(10,17,25,.85) 0%,rgba(10,17,25,0) 30%);
+  }
+  .scene{position:absolute;inset:0;z-index:1}
+  .scene svg{width:100%;height:100%;display:block}
+  .hero-copy{position:relative;z-index:3;padding:150px 0 120px;max-width:660px}
+  .hero-copy h1{margin:22px 0 24px}
+  .hero-copy h1 em{font-style:normal;color:var(--accent)}
+  .hero-copy .lead{font-size:17px;margin-bottom:34px}
+  .hero-cta{display:flex;gap:14px;flex-wrap:wrap}
+  .hero-meta{
+    position:absolute;right:28px;bottom:26px;z-index:3;
+    font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.18em;color:var(--muted);
+    display:flex;gap:14px;align-items:center;text-transform:uppercase;
+  }
+  .hero-meta .dot{width:7px;height:7px;background:var(--accent);animation:pulse 2.2s infinite}
+
+  /* ============ СЦЕНА: КРАН И КОНТЕЙНЕР ============ */
+  @keyframes trolleyX{
+    0%,20%{transform:translateX(0)}
+    40%,62%{transform:translateX(-620px)}
+    84%,100%{transform:translateX(0)}
+  }
+  @keyframes boxY{
+    0%,14%{transform:translateY(-67px)}
+    22%,48%{transform:translateY(-156px)}
+    58%,72%{transform:translateY(20px)}
+    88%,100%{transform:translateY(-67px)}
+  }
+  @keyframes boxFade{
+    0%,62%{opacity:1} 68%,90%{opacity:0} 96%,100%{opacity:1}
+  }
+  @keyframes cableK{
+    0%,14%{transform:scaleY(.83)}
+    22%,48%{transform:scaleY(.42)}
+    58%,64%{transform:scaleY(1.03)}
+    70%,84%{transform:scaleY(.42)}
+    88%,100%{transform:scaleY(.83)}
+  }
+  @keyframes swayK{
+    from{transform:rotate(-1.4deg)}
+    to{transform:rotate(1.4deg)}
+  }
+  @keyframes blinkK{0%,72%,100%{opacity:1} 78%,90%{opacity:.12}}
+  @keyframes waveK{from{transform:translateX(0)} to{transform:translateX(-120px)}}
+  @keyframes waveK2{from{transform:translateX(0)} to{transform:translateX(-80px)}}
+  @keyframes bobK{from{transform:translateY(0)} to{transform:translateY(2.5px)}}
+  @keyframes gullK{from{transform:translate(-30px,0)} to{transform:translate(60px,-16px)}}
+  @keyframes glowP{from{opacity:.5} to{opacity:.9}}
+
+  .tlX{animation:trolleyX 10.5s cubic-bezier(.45,.05,.35,.95) infinite}
+  .boxY{animation:boxY 10.5s cubic-bezier(.5,.02,.36,.98) infinite}
+  .boxAll{animation:boxFade 10.5s linear infinite}
+  .cable{transform-box:fill-box;transform-origin:top center;animation:cableK 10.5s cubic-bezier(.5,.02,.36,.98) infinite}
+  .sway{transform-box:fill-box;transform-origin:50% 0;animation:swayK 4.6s ease-in-out infinite alternate}
+  .blink{animation:blinkK 2.4s infinite}
+  .waveA{animation:waveK 14s linear infinite}
+  .waveB{animation:waveK2 21s linear infinite}
+  .bob{animation:bobK 7s ease-in-out infinite alternate}
+  .gull{animation:gullK 9s ease-in-out infinite alternate}
+  .gull.g2{animation-duration:12s;animation-delay:-4s}
+  .dockglow{animation:glowP 3.4s ease-in-out infinite alternate}
+
+  /* ============ БЕГУЩАЯ СТРОКА ============ */
+  .marquee{border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;padding:22px 0;background:var(--surface)}
+  .m-track{display:flex;width:max-content;animation:mslide 30s linear infinite}
+  .m-track span{
+    font-family:"JetBrains Mono",monospace;font-size:13px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--muted);white-space:nowrap;
+  }
+  .m-track b{color:var(--accent);font-weight:400;padding:0 26px}
+  @keyframes mslide{from{transform:translateX(0)} to{transform:translateX(-50%)}}
+
+  /* ============ РАСШИВКА ОБЩЕЕ ============ */
+  .sec{padding:118px 0}
+  .sec-head{margin-bottom:56px}
+  .sec-head h2{margin-top:18px;max-width:22ch}
+
+  /* ============ ЦИФРЫ ============ */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}
+  .stat{padding:44px 30px 40px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);position:relative;overflow:hidden}
+  .stat:first-child{padding-left:0}
+  .stat:last-child{border-right:none}
+  .stat::after{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .9s cubic-bezier(.16,1,.3,1)}
+  .stat.in::after{transform:scaleX(1)}
+  .stat-num{font-family:"Unbounded",sans-serif;font-weight:700;font-size:clamp(2rem,3.4vw,3rem);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  .stat-num small{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.42em;color:var(--muted);margin-left:8px;letter-spacing:.06em}
+  .stat-label{margin-top:12px;color:var(--muted);font-size:14.5px;line-height:1.5}
+
+  /* ============ УСЛУГИ (bento) ============ */
+  .bento{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(240px,auto);gap:14px}
+  .cell{
+    background:var(--surface);border:1px solid var(--line);padding:36px;
+    display:flex;flex-direction:column;justify-content:space-between;gap:26px;position:relative;overflow:hidden;
+    transition:border-color .3s,transform .3s cubic-bezier(.16,1,.3,1);
+  }
+  .cell:hover{border-color:rgba(255,171,31,.5);transform:translateY(-3px)}
+  .cell.wide2{grid-column:span 2}
+  .c-tag{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+  .cell h3{font-size:clamp(1.15rem,1.7vw,1.45rem);line-height:1.3;margin:14px 0 12px}
+  .cell p{color:var(--muted);font-size:15px;max-width:48ch}
+  .c-metric{font-family:"JetBrains Mono",monospace;font-size:30px;font-weight:600;color:var(--accent);letter-spacing:-.01em;margin-top:auto}
+  .c-metric small{display:block;font-size:12px;color:var(--muted);letter-spacing:.14em;margin-top:6px;text-transform:uppercase}
+  .cargo-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}
+  .cargo-list span{
+    font-family:"JetBrains Mono",monospace;font-size:11.5px;letter-spacing:.1em;color:var(--muted);
+    border:1px solid var(--line);padding:6px 12px;transition:color .2s,border-color .2s;
+  }
+  .cell:hover .cargo-list span{color:var(--text)}
+  .cell:hover .cargo-list span:hover{color:var(--accent);border-color:var(--accent)}
+  .cell.pattern{ /* «стеллажи» — файкинг паттерн под склад */
+    background:
+      repeating-linear-gradient(45deg,rgba(148,190,225,.05) 0 1px,transparent 1px 14px),
+      repeating-linear-gradient(-45deg,rgba(148,190,225,.05) 0 1px,transparent 1px 14px),
+      var(--surface);
+  }
+  .cell.quote-cell{background:linear-gradient(135deg,var(--surface-2),var(--surface));justify-content:center}
+  .q-mark{font-family:"JetBrains Mono",monospace;font-size:34px;color:var(--accent);line-height:1}
+  .cell.quote-cell p{font-size:clamp(1.05rem,1.6vw,1.3rem);color:var(--text);max-width:40ch;line-height:1.55;font-weight:500}
+  .q-author{margin-top:22px;font-size:13.5px;color:var(--muted);font-family:"JetBrains Mono",monospace;letter-spacing:.04em}
+  .q-author b{color:var(--accent);font-weight:500}
+  .mini-crane{position:absolute;right:-10px;top:-10px;opacity:.9;pointer-events:none}
+
+  /* ============ ПУТЬ ГРУЗА ============ */
+  .steps-wrap{position:relative}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:26px;position:relative;margin-top:64px}
+  .steps::before{content:"";position:absolute;top:5px;left:0;right:0;height:1px;background:var(--line)}
+  .progress{position:absolute;top:5px;left:0;height:1px;background:var(--accent);width:0;transition:width 1.6s cubic-bezier(.16,1,.3,1)}
+  .steps-wrap.in .progress{width:100%}
+  .step{position:relative;padding-top:44px}
+  .step::before{
+    content:"";position:absolute;top:0;left:0;width:11px;height:11px;background:var(--bg);
+    border:2px solid var(--accent);transition:background .4s;transform:rotate(45deg);
+  }
+  .steps-wrap.in .step::before{background:var(--accent)}
+  .step .n{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.2em;color:var(--accent)}
+  .step h3{font-size:1.02rem;margin:12px 0 10px}
+  .step p{color:var(--muted);font-size:14.5px}
+
+  /* ============ КОНТАКТЫ ============ */
+  .contact{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:start}
+  .contact h2{margin:18px 0 16px}
+  .contact .lead{margin-bottom:34px}
+  .c-rows{border-top:1px solid var(--line)}
+  .c-row{
+    display:flex;justify-content:space-between;align-items:center;gap:20px;
+    padding:26px 4px;border-bottom:1px solid var(--line);transition:padding-left .3s cubic-bezier(.16,1,.3,1);
+  }
+  .c-row:hover{padding-left:14px}
+  .c-row .k{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .c-row .v{font-size:clamp(1rem,1.6vw,1.3rem);font-weight:500;display:flex;align-items:center;gap:16px;text-align:right}
+  .c-row .v svg{color:var(--accent);flex:none}
+
+  /* ============ ФУТЕР ============ */
+  footer{border-top:1px solid var(--line);padding:40px 0 34px;background:var(--surface)}
+  .f-in{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+  .f-in .brand{font-size:13px}
+  .f-note{font-size:12.5px;color:var(--muted)}
+  .f-nav{display:flex;gap:24px;font-size:13px;color:var(--muted)}
+  .f-nav a:hover{color:var(--accent)}
+
+  /* ============ REVEAL ============ */
+  [data-reveal]{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.16,1,.3,1),transform .8s cubic-bezier(.16,1,.3,1);transition-delay:var(--d,0s)}
+  [data-reveal].in{opacity:1;transform:none}
+
+  /* ============ АДАПТИВ ============ */
+  @media (max-width:1020px){
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .stat:nth-child(odd){border-right:1px solid var(--line)}
+    .stat:nth-child(even){border-right:none}
+    .stat:nth-child(3){padding-left:0}
+    .steps{grid-template-columns:repeat(2,1fr);gap:40px 26px}
+    .steps::before,.progress{display:none}
+    .step{border-top:1px solid var(--line);padding-top:20px}
+    .bento{grid-template-columns:1fr 1fr}
+    .cell.wide2{grid-column:span 2}
+  }
+  @media (max-width:880px){
+    .nav-links,.nav .btn{display:none}
+    .burger{display:block}
+    .hero{align-items:flex-end}
+    .hero-copy{padding:140px 0 40px;max-width:100%}
+    .scene{position:relative;z-index:1;height:340px;margin-top:-40px}
+    .hero{flex-direction:column;justify-content:flex-end}
+    .hero-meta{display:none}
+    .contact{grid-template-columns:1fr;gap:44px}
+    .sec{padding:84px 0}
+  }
+  @media (max-width:640px){
+    .wrap{padding:0 20px}
+    .bento{grid-template-columns:1fr}
+    .cell,.cell.wide2{grid-column:span 1}
+    .cell{padding:28px}
+    .stats{grid-template-columns:1fr 1fr}
+    .stat{padding:30px 18px}
+    .stat:first-child,.stat:nth-child(3){padding-left:0}
+    .steps{grid-template-columns:1fr}
+    .hero-cta .btn,.hero-cta .btn-ghost{width:100%;justify-content:center}
+  }
+
+  /* ============ REDUCED MOTION ============ */
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+    [data-reveal]{opacity:1;transform:none}
+    .stat::after{transform:scaleX(1)}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= НАВИГАЦИЯ ================= -->
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top" aria-label="ПортЛайн — на главную">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+        <rect x="7" y="12" width="12" height="8" fill="#ffab1f"/>
+        <rect x="12.5" y="2" width="2" height="10" fill="#ffab1f"/>
+        <rect x="3" y="21" width="20" height="2" fill="#3a4c5e"/>
+      </svg>
+      ПОРТЛАЙН
+    </a>
+    <nav class="nav-links" aria-label="Основная навигация">
+      <a href="#services">Услуги</a>
+      <a href="#numbers">Цифры</a>
+      <a href="#process">Путь груза</a>
+      <a href="#contacts">Контакты</a>
+    </nav>
+    <a class="btn" href="#contacts">Запросить ставку</a>
+    <button class="burger" id="burger" aria-label="Меню" aria-expanded="false"><span></span><span></span></button>
+  </div>
+</header>
+<div class="m-panel" id="mpanel">
+  <a href="#services">Услуги</a>
+  <a href="#numbers">Цифры</a>
+  <a href="#process">Путь груза</a>
+  <a href="#contacts">Контакты</a>
+  <a class="btn" href="#contacts">Запросить ставку</a>
+</div>
+
+<!-- ================= HERO ================= -->
+<section class="hero" id="top">
+
+  <!-- Сцена: портовый кран поднимает контейнер с судна -->
+  <div class="scene" aria-hidden="true">
+    <svg viewBox="0 0 1440 620" preserveAspectRatio="xMaxYMax slice">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0a141e"/>
+          <stop offset=".55" stop-color="#0d1c2a"/>
+          <stop offset="1" stop-color="#15293b"/>
+        </linearGradient>
+        <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0b1622"/>
+          <stop offset="1" stop-color="#070d15"/>
+        </linearGradient>
+        <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+          <stop offset="0" stop-color="#ffab1f" stop-opacity=".14"/>
+          <stop offset="1" stop-color="#ffab1f" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <!-- небо -->
+      <rect width="1440" height="620" fill="url(#sky)"/>
+      <!-- тёплое свечение причала -->
+      <ellipse class="dockglow" cx="1020" cy="470" rx="330" ry="120" fill="url(#glow)"/>
+      <ellipse class="dockglow" cx="420" cy="470" rx="260" ry="100" fill="url(#glow)" style="animation-delay:-1.7s"/>
+
+      <!-- чайки -->
+      <path class="gull" d="M700 170 q5 -6 10 0 q5 -6 10 0" stroke="#8ba1b4" stroke-width="1.6" fill="none" opacity=".3"/>
+      <path class="gull g2" d="M640 130 q4 -5 8 0 q4 -5 8 0" stroke="#8ba1b4" stroke-width="1.4" fill="none" opacity=".22"/>
+
+      <!-- вода -->
+      <rect y="486" width="1440" height="134" fill="url(#water)"/>
+      <g stroke="#8cc0e0" stroke-opacity=".12" fill="none">
+        <path class="waveA" d="M-120 508 q30 -6 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0"/>
+      </g>
+      <g stroke="#8cc0e0" stroke-opacity=".07" fill="none">
+        <path class="waveB" d="M-160 542 q20 -5 40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0"/>
+      </g>
+
+      <!-- судно -->
+      <g class="bob">
+        <path d="M 878 470 C 900 434 922 417 960 417 L 1408 417 L 1408 472 C 1258 480 1058 480 878 470 Z" fill="#0b131c"/>
+        <rect x="952" y="412" width="456" height="5" fill="#182431"/>
+        <!-- надстройка -->
+        <rect x="1306" y="300" width="112" height="117" fill="#0d1721"/>
+        <rect x="1320" y="318" width="6" height="34" fill="#ffab1f" opacity=".4"/>
+        <rect x="1338" y="318" width="6" height="34" fill="#ffab1f" opacity=".25"/>
+        <line x1="1362" y1="300" x2="1362" y2="246" stroke="#0d1721" stroke-width="4"/>
+        <circle cx="1362" cy="242" r="3.4" fill="#ffab1f" opacity=".6" class="blink"/>
+        <!-- контейнеры на борту -->
+        <g>
+          <rect x="1000" y="389" width="100" height="26" fill="#1c2b39"/><rect x="1000" y="389" width="100" height="1.5" fill="#ffab1f" opacity=".18"/>
+          <rect x="1104" y="389" width="100" height="26" fill="#152331"/><rect x="1104" y="389" width="100" height="1.5" fill="#ffab1f" opacity=".12"/>
+          <rect x="1208" y="389" width="100" height="26" fill="#20303f"/><rect x="1208" y="389" width="100" height="1.5" fill="#ffab1f" opacity=".14"/>
+          <rect x="1000" y="362" width="100" height="25" fill="#16222e"/><rect x="1000" y="362" width="100" height="1.5" fill="#ffab1f" opacity=".22"/>
+          <rect x="1104" y="362" width="100" height="25" fill="#1b2a37"/><rect x="1104" y="362" width="100" height="1.5" fill="#ffab1f" opacity=".16"/>
+        </g>
+      </g>
+
+      <!-- причал -->
+      <rect x="0" y="452" width="902" height="42" fill="#0a1219"/>
+      <rect x="0" y="452" width="902" height="2" fill="#243546"/>
+      <g fill="#101a24">
+        <rect x="208" y="446" width="12" height="8" rx="2"/>
+        <rect x="530" y="446" width="12" height="8" rx="2"/>
+        <rect x="812" y="446" width="12" height="8" rx="2"/>
+      </g>
+
+      <!-- кран: силует -->
+      <g fill="#0c151e">
+        <!-- опоры портала -->
+        <rect x="252" y="210" width="14" height="242"/>
+        <rect x="334" y="210" width="14" height="242"/>
+        <rect x="246" y="296" width="108" height="10"/>
+      </g>
+      <path d="M 252 300 L 348 222 M 348 300 L 252 222" stroke="#0c151e" stroke-width="6" fill="none"/>
+      <!-- стрелы и А-рама -->
+      <line x1="300" y1="64" x2="284" y2="210" stroke="#0c151e" stroke-width="11"/>
+      <line x1="300" y1="64" x2="316" y2="210" stroke="#0c151e" stroke-width="11"/>
+      <rect x="150" y="100" width="96" height="12" fill="#0c151e"/>
+      <rect x="160" y="112" width="76" height="34" fill="#0c151e"/>
+      <rect x="176" y="96" width="904" height="16" fill="#0c151e"/>
+      <g stroke="#0c151e" stroke-width="2.4">
+        <line x1="300" y1="68" x2="205" y2="98"/>
+        <line x1="300" y1="68" x2="1050" y2="98"/>
+      </g>
+      <g stroke="#132029" stroke-width="1.4">
+        <line x1="240" y1="112" x2="240" y2="118"/><line x1="300" y1="112" x2="300" y2="118"/>
+        <line x1="360" y1="112" x2="360" y2="118"/><line x1="420" y1="112" x2="420" y2="118"/>
+        <line x1="480" y1="112" x2="480" y2="118"/><line x1="540" y1="112" x2="540" y2="118"/>
+        <line x1="600" y1="112" x2="600" y2="118"/><line x1="660" y1="112" x2="660" y2="118"/>
+        <line x1="720" y1="112" x2="720" y2="118"/><line x1="780" y1="112" x2="780" y2="118"/>
+        <line x1="840" y1="112" x2="840" y2="118"/><line x1="900" y1="112" x2="900" y2="118"/>
+        <line x1="960" y1="112" x2="960" y2="118"/><line x1="1020" y1="112" x2="1020" y2="118"/>
+      </g>
+      <circle class="blink" cx="300" cy="56" r="4" fill="#ffab1f"/>
+
+      <!-- портальный тягач с уже выгруженным контейнером -->
+      <g>
+        <rect x="330" y="424" width="38" height="24" rx="3" fill="#0c151e"/>
+        <rect x="338" y="429" width="20" height="8" fill="#ffab1f" opacity=".14"/>
+        <rect x="368" y="432" width="118" height="9" fill="#0c151e"/>
+        <rect x="378" y="404" width="98" height="29" fill="#8f5f1f"/>
+        <path d="M388 408 v21 M398 408 v21 M408 408 v21 M418 408 v21 M428 408 v21 M438 408 v21 M448 408 v21 M458 408 v21" stroke="#171004" stroke-opacity=".35" stroke-width="2"/>
+        <g fill="#060b10" stroke="#3a4c5e" stroke-width="1">
+          <circle cx="346" cy="446" r="7"/><circle cx="420" cy="447" r="7"/><circle cx="468" cy="447" r="7"/>
+        </g>
+      </g>
+
+      <!-- ТЕЛЕЖКА + КОНТЕЙНЕР: основная анимация -->
+      <g transform="translate(1050,112)">
+        <g class="tlX">
+          <!-- трос -->
+          <rect class="cable" x="-0.8" y="14" width="1.6" height="288" fill="#9db0c0" fill-opacity=".5"/>
+          <!-- тележка -->
+          <rect x="-15" y="0" width="30" height="15" rx="2" fill="#0c151e" stroke="#3a4c5e" stroke-width="1"/>
+          <rect x="-4" y="-2" width="8" height="4" fill="#ffab1f"/>
+          <!-- груз (контейнер + спредер) -->
+          <g class="boxAll">
+            <g class="boxY">
+              <rect x="-30" y="292" width="60" height="6" fill="#ffab1f"/>
+              <g class="sway">
+                <g>
+                  <rect x="-50" y="300" width="100" height="44" rx="2" fill="#ffab1f"/>
+                  <path d="M-40 304 v36 M-30 304 v36 M-20 304 v36 M-10 304 v36 M0 304 v36 M10 304 v36 M20 304 v36 M30 304 v36 M40 304 v36" stroke="#171004" stroke-opacity=".3" stroke-width="2.4"/>
+                  <rect x="-50" y="300" width="8" height="44" fill="#171004" fill-opacity=".22"/>
+                  <rect x="42" y="300" width="8" height="44" fill="#171004" fill-opacity=".22"/>
+                  <text x="0" y="326" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="#171004" fill-opacity=".55" letter-spacing="2">PLNU</text>
+                </g>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div class="wrap" style="width:100%">
+    <div class="hero-copy">
+      <span class="tick">Портовой терминал · Новороссийск</span>
+      <h1>Портовые выгрузки<br>и доставка — <em>точно в&nbsp;срок</em></h1>
+      <p class="lead">Полный цикл перевалки: судно, терминал, склад, доставка до получателя. Работаем 24/7, без сезонных простоев.</p>
+      <div class="hero-cta">
+        <a class="btn" href="#contacts">Запросить ставку <span class="arr">↓</span></a>
+        <a class="btn-ghost" href="#services">Услуги <span class="arr">→</span></a>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-meta">
+    <span class="dot"></span> Порт работает · Смена открыта
+  </div>
+</section>
+
+<!-- ================= БЕГУЩАЯ СТРОКА ================= -->
+<div class="marquee" aria-hidden="true">
+  <div class="m-track">
+    <span>Выгрузка судов<b>/</b>Хранение на терминале<b>/</b>Доставка по РФ и ЕАЭС<b>/</b>Таможенное оформление<b>/</b>Контейнеры<b>/</b>Балкерные грузы<b>/</b>Ж/Д и автоперевозки<b>/</b></span>
+    <span>Выгрузка судов<b>/</b>Хранение на терминале<b>/</b>Доставка по РФ и ЕАЭС<b>/</b>Таможенное оформление<b>/</b>Контейнеры<b>/</b>Балкерные грузы<b>/</b>Ж/Д и автоперевозки<b>/</b></span>
+  </div>
+</div>
+
+<!-- ================= ЦИФРЫ ================= -->
+<section class="sec" id="numbers">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <span class="tick">Терминал в цифрах</span>
+      <h2>Порт, который держит график</h2>
+    </div>
+    <div class="stats" data-reveal style="--d:.08s">
+      <!-- <custom-figures are mock/> цифры вымышлены для демо -->
+      <div class="stat">
+        <div class="stat-num"><span data-val="1.2" data-dec="1">0</span><small>млн т</small></div>
+        <div class="stat-label">грузооборот терминала в год</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num"><span data-val="48" data-dec="0">0</span><small>судов</small></div>
+        <div class="stat-label">обрабатываем ежемесячно</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num"><span data-val="99.1" data-dec="1">0</span><small>%</small></div>
+        <div class="stat-label">выгрузок точно по графику</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num"><span data-val="14" data-dec="0">0</span><small>лет</small></div>
+        <div class="stat-label">работаем у причала без перерыва</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= УСЛУГИ ================= -->
+<section class="sec" id="services" style="padding-top:80px">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <span class="tick">Услуги</span>
+      <h2>От борта судна — до склада клиента</h2>
+    </div>
+
+    <div class="bento">
+      <!-- Выгрузка (широкая) -->
+      <article class="cell wide2" data-reveal>
+        <svg class="mini-crane" width="190" height="120" viewBox="0 0 190 120" aria-hidden="true">
+          <line x1="90" y1="18" x2="76" y2="96" stroke="#182634" stroke-width="7"/>
+          <line x1="90" y1="18" x2="104" y2="96" stroke="#182634" stroke-width="7"/>
+          <rect x="14" y="16" width="150" height="8" fill="#182634"/>
+          <line x1="90" y1="16" x2="30" y2="17" stroke="#182634" stroke-width="2.5"/>
+          <line x1="90" y1="16" x2="160" y2="17" stroke="#182634" stroke-width="2.5"/>
+          <circle cx="90" cy="12" r="2.6" fill="#ffab1f" class="blink"/>
+          <g class="tlX" style="animation-duration:8s">
+            <rect x="-8" y="22" width="16" height="8" rx="1.5" fill="#22313f"/>
+            <line x1="0" y1="30" x2="0" y2="66" stroke="#9db0c0" stroke-opacity=".45" stroke-width="1.3"/>
+            <g class="sway" style="animation-duration:3.4s">
+              <rect x="-28" y="66" width="56" height="22" fill="#ffab1f"/>
+              <path d="M-18 70 v14 M-6 70 v14 M6 70 v14 M18 70 v14" stroke="#171004" stroke-opacity=".3" stroke-width="1.8"/>
+            </g>
+          </g>
+        </svg>
+        <div>
+          <span class="c-tag">01 / Перевалка</span>
+          <h3>Выгрузка судов любой категории</h3>
+          <p>Портальные и мобильные портовые краны, спецтехника. Контейнеры, балкер, негабарит, рефгрузы — с фиксацией времени каждой операции.</p>
+        </div>
+        <div class="cargo-list">
+          <span>КОНТЕЙНЕРЫ</span><span>БАЛКЕР</span><span>НЕГАБАРИТ</span><span>РЕФГРУЗ</span><span>РО-РО</span>
+        </div>
+      </article>
+
+      <!-- Хранение -->
+      <article class="cell pattern" data-reveal style="--d:.08s">
+        <div>
+          <span class="c-tag">02 / Терминал</span>
+          <h3>Хранение и обработка</h3>
+          <p>Открытые площадки и крытые склады, охрана и учёт каждой единицы груза.</p>
+        </div>
+        <div class="c-metric">85 000 м²<small>площадей под груз</small></div>
+      </article>
+
+      <!-- Доставка -->
+      <article class="cell" data-reveal>
+        <div>
+          <span class="c-tag">03 / Логистика</span>
+          <h3>Доставка до двери</h3>
+          <p>Автотранспорт, ж/д станции и экспедирование по России и ЕАЭС. Таможенные формальности берём на себя.</p>
+        </div>
+        <div class="c-metric">41 регион<small>покрытие доставки</small></div>
+      </article>
+
+      <!-- Цитата (широкая) -->
+      <article class="cell wide2 quote-cell" data-reveal style="--d:.12s">
+        <div style="max-width:56ch">
+          <div class="q-mark">“</div>
+          <p style="margin-top:14px">«ПортЛайн выгружает наши балкеры третий сезон — ни одной задержки сверх стивидорного счёта».</p>
+          <div class="q-author"><b>Игорь Саломин</b> · директор по логистике, агрохолдинг «ЗерноТрейд»</div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ПУТЬ ГРУЗА ================= -->
+<section class="sec" id="process" style="padding-top:70px">
+  <div class="wrap">
+    <div class="steps-wrap" data-reveal>
+      <div class="sec-head">
+        <h2>Путь груза по терминалу</h2>
+        <p class="lead" style="margin-top:16px">Четыре шага, каждый — с ответственным и фиксацией в системе.</p>
+      </div>
+      <div class="steps">
+        <span class="progress" aria-hidden="true"></span>
+        <div class="step">
+          <span class="n">Шаг / 01</span>
+          <h3>Заявка и план</h3>
+          <p>Уточняем судно, груз и сроки, строим график перевалки и закрепляем слоты.</p>
+        </div>
+        <div class="step">
+          <span class="n">Шаг / 02</span>
+          <h3>Выгрузка на терминал</h3>
+          <p>Краны снимают груз с борта на причал. Момент каждой операции — в акте.</p>
+        </div>
+        <div class="step">
+          <span class="n">Шаг / 03</span>
+          <h3>Хранение и учёт</h3>
+          <p>Размещаем груз на площадке, ведём поштучный учёт и охрану.</p>
+        </div>
+        <div class="step">
+          <span class="n">Шаг / 04</span>
+          <h3>Доставка клиенту</h3>
+          <p>Авто, ж/д и экспедирование до склада получателя с закрытием ЭДО.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= КОНТАКТЫ ================= -->
+<section class="sec" id="contacts" style="padding-top:70px;padding-bottom:110px">
+  <div class="wrap contact">
+    <div data-reveal>
+      <span class="tick">Связь</span>
+      <h2>Подайте заявку — рассчитаем ставку за&nbsp;один рабочий день</h2>
+      <p class="lead">Запросите расчёт по вашему судну или партии груза. Отвечаем в течение двух часов в рабочее время.</p>
+      <a class="btn" href="mailto:ship@portline.ru?subject=%D0%97%D0%B0%D0%BF%D1%80%D0%BE%D1%81%20%D1%81%D1%82%D0%B0%D0%B2%D0%BA%D0%B8">Запросить ставку <span class="arr">↓</span></a>
+    </div>
+    <div data-reveal style="--d:.1s">
+      <div class="c-rows">
+        <a class="c-row" href="tel:+78005550800">
+          <span class="k">Телефон · 24/7</span>
+          <span class="v mono">+7 (800) 555-08-00
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 5.5C3 3.6 4.4 2.2 6.2 2.2c.4 0 .8.2 1 .6l1.2 2.4c.2.4.1.9-.2 1.2L7 7.6c.9 1.8 2.4 3.3 4.2 4.2l1.2-1.2c.3-.3.8-.4 1.2-.2l2.4 1.2c.4.2.6.6.6 1 0 1.8-1.4 3.2-3.2 3.2C7.9 15.8 3 10.9 3 5.5z"/></svg>
+          </span>
+        </a>
+        <a class="c-row" href="mailto:ship@portline.ru">
+          <span class="k">Почта</span>
+          <span class="v mono">ship@portline.ru
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="14" height="10.5"/><path d="M2.5 5l6.5 5 6.5-5"/></svg>
+          </span>
+        </a>
+        <div class="c-row">
+          <span class="k">Терминал</span>
+          <span class="v mono" style="font-size:1rem">г. Новороссийск, Портовый пр-д, 4
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="7.5" r="3.2"/><path d="M9 16c3.5-3.8 5.5-6.4 5.5-8.a5.5 5.5 0 10-11 0C3.5 9.6 5.5 12.2 9 16z"/></svg>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ФУТЕР ================= -->
+<footer>
+  <div class="wrap f-in">
+    <a class="brand" href="#top">
+      <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true">
+        <rect x="7" y="12" width="12" height="8" fill="#ffab1f"/>
+        <rect x="12.5" y="2" width="2" height="10" fill="#ffab1f"/>
+        <rect x="3" y="21" width="20" height="2" fill="#3a4c5e"/>
+      </svg>
+      ПОРТЛАЙН
+    </a>
+    <nav class="f-nav" aria-label="Навигация в подвале">
+      <a href="#services">Услуги</a>
+      <a href="#numbers">Цифры</a>
+      <a href="#process">Путь груза</a>
+      <a href="#contacts">Контакты</a>
+    </nav>
+    <span class="f-note">© 2026 «ПортЛайн» · демонстрационный проект, компания и контакты вымышлены</span>
+  </div>
+</footer>
+
+<script>
+  // ---- мобильное меню ----
+  var burger = document.getElementById('burger');
+  var mpanel = document.getElementById('mpanel');
+  burger.addEventListener('click', function () {
+    var open = mpanel.classList.toggle('open');
+    burger.classList.toggle('open', open);
+    burger.setAttribute('aria-expanded', open);
+  });
+  mpanel.addEventListener('click', function (e) {
+    if (e.target.tagName === 'A') { mpanel.classList.remove('open'); burger.classList.remove('open'); }
+  });
+
+  // ---- появление секций (IntersectionObserver, без scroll-листенеров) ----
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: .16, rootMargin: '0px 0px -6% 0px' });
+  document.querySelectorAll('[data-reveal]').forEach(function (el) { io.observe(el); });
+
+  // ---- счётчики ----
+  function fmt(v, dec) {
+    return dec ? v.toFixed(dec).replace('.', ',') : String(Math.round(v));
+  }
+  var cio = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      cio.unobserve(e.target);
+      var el = e.target, target = parseFloat(el.dataset.val), dec = +el.dataset.dec;
+      if (reduce) { el.textContent = fmt(target, dec); return; }
+      var t0 = null, DUR = 1400;
+      function tick(ts) {
+        if (!t0) t0 = ts;
+        var p = Math.min((ts - t0) / DUR, 1);
+        var ease = 1 - Math.pow(1 - p, 3);
+        el.textContent = fmt(target * ease, dec);
+        if (p < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+  }, { threshold: .5 });
+  document.querySelectorAll('[data-val]').forEach(function (el) { cio.observe(el); });
+</script>
+</body>
+</html>
